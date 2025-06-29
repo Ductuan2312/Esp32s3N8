@@ -1,0 +1,7 @@
+SET(SOURCES ui_screenone.c
+    ui_screentwo.c
+    ui.c
+    ui_comp_hook.c
+    ui_helpers.c)
+
+add_library(ui ${SOURCES})

@@ -1,114 +1,90 @@
 #include <Arduino.h>
-#include <FastLED.h>
+#include <TFT_eSPI.h>
+#include <SPI.h>
 
-// RGB LED (WS2812B) - theo code mẫu nhà sản xuất
-#define PIN_NEOPIXEL 38
-#define NUM_LEDS 1
-
-// Mảng LED
-CRGB leds[NUM_LEDS];
-
-// Hàm set màu (theo style nhà sản xuất)
-void Set_Color(uint8_t Red, uint8_t Green, uint8_t Blue) {
-  leds[0] = CRGB(Red, Green, Blue);
-  FastLED.show();
-}
-
-// Hàm chuyển màu mượt (RGB Loop)
-void RGB_Loop(uint16_t Waiting) {
-  // Chuyển từ đỏ sang xanh lá
-  for(int i = 0; i <= 255; i++) {
-    Set_Color(255 - i, i, 0);
-    delay(Waiting);
-  }
-  
-  // Chuyển từ xanh lá sang xanh dương  
-  for(int i = 0; i <= 255; i++) {
-    Set_Color(0, 255 - i, i);
-    delay(Waiting);
-  }
-  
-  // Chuyển từ xanh dương về đỏ
-  for(int i = 0; i <= 255; i++) {
-    Set_Color(i, 0, 255 - i);
-    delay(Waiting);
-  }
-}
+TFT_eSPI tft = TFT_eSPI();
 
 void setup() {
-  // Khởi tạo USB CDC Serial
-  Serial.begin(115200);
-  
-  // Đợi USB CDC kết nối (quan trọng cho ESP32-S3)
-  unsigned long start = millis();
-  while (!Serial && (millis() - start) < 10000) {
-    delay(100); // Đợi USB CDC ready
-  }
-  
-  delay(1000); // Thêm delay để đảm bảo ổn định
-  
-  // Test Serial với USB CDC
-  Serial.println();
-  Serial.println("==============================================");
-  Serial.println("ESP32-S3-LCD-1.47B USB CDC Serial Test");
-  Serial.println("==============================================");
-  Serial.print("Boot time: ");
-  Serial.print(millis());
-  Serial.println(" ms");
-  Serial.print("USB CDC ready: ");
-  Serial.println(Serial ? "YES" : "NO");
-  Serial.flush();
-  Serial.println("==============================================");
-  Serial.print("⏰ Boot time: ");
-  Serial.print(millis());
-  Serial.println(" ms");
-  
-  // Khởi tạo FastLED
-  Serial.println("🔧 Initializing FastLED...");
-  FastLED.addLeds<WS2812B, PIN_NEOPIXEL, GRB>(leds, NUM_LEDS);
-  FastLED.setBrightness(100);
-  
-  // Test LED
-  Serial.println("💡 Testing LED...");
-  Set_Color(255, 0, 0); // Đỏ
-  delay(500);
-  Set_Color(0, 255, 0); // Xanh lá
-  delay(500);
-  Set_Color(0, 0, 255); // Xanh dương
-  delay(500);
-  Set_Color(0, 0, 0);   // Tắt
-  
-  Serial.println("✅ Setup complete!");
-  Serial.print("🌈 NeoPixel Pin: GPIO ");
-  Serial.println(PIN_NEOPIXEL);
-  Serial.println("🎨 Starting color effects...");
-  Serial.println("==============================================");
-  Serial.flush(); // Đảm bảo tất cả được gửi
+    Serial.begin(115200);
+    delay(2000); // Đợi Serial ready
+    
+    Serial.println("=== ESP32-S3 Display Test ===");
+    
+    // Khởi tạo chân backlight theo pin mapping mới
+    pinMode(46, OUTPUT);     // TFT_BL = GPIO46
+    digitalWrite(46, HIGH);  // Bật backlight
+    Serial.println("Backlight ON (GPIO46)");
+    
+    // Khởi tạo chân reset theo pin mapping mới
+    pinMode(39, OUTPUT);     // TFT_RST = GPIO39
+    digitalWrite(39, LOW);   // Reset LOW
+    delay(50);
+    digitalWrite(39, HIGH);  // Reset HIGH
+    delay(50);
+    Serial.println("Reset done (GPIO39)");
+    
+    // Khởi tạo TFT
+    Serial.println("Initializing TFT...");
+    tft.init();
+    Serial.println("TFT init done");
+    
+    tft.setRotation(0);      // Portrait mode
+    Serial.printf("Display size: %dx%d\n", tft.width(), tft.height());
+    
+    // Test các màu cơ bản
+    Serial.println("Testing colors...");
+    
+    // Màu đỏ
+    tft.fillScreen(TFT_RED);
+    Serial.println("RED screen");
+    delay(2000);
+    
+    // Màu xanh lá
+    tft.fillScreen(TFT_GREEN);
+    Serial.println("GREEN screen");
+    delay(2000);
+    
+    // Màu xanh dương
+    tft.fillScreen(TFT_BLUE);
+    Serial.println("BLUE screen");
+    delay(2000);
+    
+    // Màu trắng với text
+    tft.fillScreen(TFT_WHITE);
+    tft.setTextColor(TFT_BLACK, TFT_WHITE);
+    tft.setTextFont(2);
+    tft.drawString("ESP32-S3", 10, 10);
+    tft.drawString("Waveshare", 10, 30);
+    tft.drawString("Display Test", 10, 50);
+    Serial.println("WHITE screen with text");
+    delay(2000);
+    
+    // Màu đen với text trắng
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setTextFont(4);
+    tft.drawString("WORKING!", 10, 100);
+    Serial.println("Test completed - display should show WORKING!");
 }
 
 void loop() {
-  Serial.println("🌈 Smooth RGB Color Loop");
-  
-  // Hiệu ứng chuyển màu mượt (chậm)
-  RGB_Loop(5);
-  
-  Serial.println("✨ Fast Rainbow Effect");
-  
-  // Hiệu ứng chuyển màu nhanh
-  RGB_Loop(1);
-  
-  Serial.println("💙 Breathing Effect");
-  
-  // Hiệu ứng thở (fade in/out) màu xanh dương
-  for(int brightness = 0; brightness <= 255; brightness += 5) {
-    Set_Color(0, 0, brightness);
-    delay(20);
-  }
-  for(int brightness = 255; brightness >= 0; brightness -= 5) {
-    Set_Color(0, 0, brightness);
-    delay(20);
-  }
-  
-  Serial.println("---");
-  delay(1000);
+    // Nhấp nháy màn hình mỗi 3 giây
+    static unsigned long lastTime = 0;
+    if (millis() - lastTime > 3000) {
+        lastTime = millis();
+        
+        // Đổi màu nền
+        static int colorIndex = 0;
+        uint16_t colors[] = {TFT_BLACK, TFT_RED, TFT_GREEN, TFT_BLUE, TFT_YELLOW, TFT_CYAN, TFT_MAGENTA};
+        
+        tft.fillScreen(colors[colorIndex]);
+        tft.setTextColor(TFT_WHITE, colors[colorIndex]);
+        tft.setTextFont(2);
+        tft.drawString("Color Test " + String(colorIndex), 10, 10);
+        
+        colorIndex = (colorIndex + 1) % 7;
+        Serial.println("Color changed: " + String(colorIndex));
+    }
+    
+    delay(100);
 }
