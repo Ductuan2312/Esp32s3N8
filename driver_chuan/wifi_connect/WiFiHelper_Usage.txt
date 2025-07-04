@@ -1,0 +1,108 @@
+# WiFiHelper - ESP32 WiFiManager Module
+
+## 📁 Files cần có:
+```
+project/
+├── WiFiHelper.h     ← Header file
+├── WiFiHelper.cpp   ← Implementation  
+└── main.ino         ← Code chính
+```
+
+## 🚀 Cách sử dụng nhanh:
+
+### 1. Include và khởi tạo:
+```cpp
+#include "WiFiHelper.h"
+
+WiFiHelper wifi;
+
+void setup() {
+    Serial.begin(115200);
+    
+    // Khởi tạo WiFi với AP name và password
+    if (!wifi.begin("ESP32-Setup", "12345678")) {
+        ESP.restart();
+    }
+    
+    // WiFi đã sẵn sàng, tiếp tục code khác...
+}
+```
+
+### 2. Nút BOOT reset WiFi:
+```cpp
+#define BOOT_PIN 0
+
+void setup() {
+    pinMode(BOOT_PIN, INPUT_PULLUP);
+}
+
+void loop() {
+    static unsigned long buttonPressTime = 0;
+    static bool buttonPressed = false;
+    
+    bool currentButtonState = digitalRead(BOOT_PIN) == LOW;
+    
+    if (currentButtonState && !buttonPressed) {
+        buttonPressTime = millis();
+        buttonPressed = true;
+        Serial.println("🔘 Nhấn nút BOOT...");
+    } 
+    else if (!currentButtonState && buttonPressed) {
+        buttonPressed = false;
+        unsigned long pressDuration = millis() - buttonPressTime;
+        
+        if (pressDuration >= 2000) {
+            wifi.resetSettings();  // Reset và restart
+        } else {
+            Serial.println("🔘 Thả nút (chưa đủ 2s)");
+        }
+    }
+}
+```
+
+## 🎯 API của WiFiHelper:
+- `wifi.begin(apName, password)` - Khởi tạo WiFi
+- `wifi.resetSettings()` - Reset WiFi và restart
+- `wifi.isConnected()` - Kiểm tra kết nối
+- `wifi.printStatus()` - In thông tin WiFi
+
+## 📱 Cách hoạt động:
+1. **Lần đầu**: Tạo AP "ESP32-Setup" để cấu hình WiFi
+2. **Các lần sau**: Tự động kết nối WiFi đã lưu  
+3. **Reset**: Giữ nút BOOT 2s → xóa WiFi → tạo lại AP
+
+## ⚡ Copy-paste template:
+```cpp
+#include "WiFiHelper.h"
+
+#define BOOT_PIN 0
+WiFiHelper wifi;
+
+void setup() {
+    Serial.begin(115200);
+    pinMode(BOOT_PIN, INPUT_PULLUP);
+    
+    if (!wifi.begin("MyProject-AP", "12345678")) {
+        ESP.restart();
+    }
+    
+    Serial.println("✅ WiFi ready!");
+}
+
+void loop() {
+    // Button reset logic ở trên
+    
+    if (!wifi.isConnected()) {
+        Serial.println("⚠️ WiFi lost!");
+        return;
+    }
+    
+    // Main project code here...
+}
+```
+
+## 🔧 Notes:
+- Thay "MyProject-AP" thành tên project
+- Nút BOOT = GPIO 0 trên hầu hết ESP32
+- WiFiManager tự động tạo captive portal
+- Timeout config portal: 3 phút
